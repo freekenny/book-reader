@@ -15,19 +15,22 @@ Designed with simplicity in mind, this reader runs entirely in the browser witho
 
 ## How to Run
 
-Because modern browsers enforce Security/CORS policies, loading EPUB files from a local file path (`file://`) will fail. To use this application, you must run it via a local web server:
+Simply download the `index.html` file and open it directly in your web browser (`file://`). It runs completely client-side and offline, out of the box!
 
-### Option 1: Python (Quickest)
-If you have Python installed, open your terminal/command prompt in this folder and run:
+### Optional: Running via a Local Web Server
+While modern browsers render PDF and EPUB files locally using `FileReader` and Blob URLs, some strict security environments might block local files or styles. If you encounter any issues, you can host the file using a simple local server:
+
+#### Option 1: Python (Quickest)
+If you have Python installed, open your terminal in this folder and run:
 ```bash
 python -m http.server 8000
 ```
 Then visit `http://localhost:8000` in your browser.
 
-### Option 2: VS Code Live Server
+#### Option 2: VS Code Live Server
 If you use VS Code, install the **Live Server** extension, open the project folder, and click the **Go Live** button in the bottom status bar.
 
-### Option 3: Node.js (http-server)
+#### Option 3: Node.js (http-server)
 If you have Node.js installed:
 ```bash
 npx http-server -p 8000
