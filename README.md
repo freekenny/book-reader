@@ -41,3 +41,15 @@ Then visit `http://localhost:8000`.
 *   [PDF.js](https://mozilla.github.io/pdf.js/) for client-side PDF rendering.
 *   [epub.js](https://github.com/futurepress/epub.js/) for client-side EPUB rendering and navigation.
 *   [JSZip](https://stuk.github.io/jszip/) (dependency of epub.js) to extract EPUB containers.
+
+## Deploying to GitHub Pages
+
+Since this is a fully static, client-side application, you can host it for free directly on GitHub Pages:
+
+1. Go to your repository at [github.com/freekenny/book-reader](https://github.com/freekenny/book-reader).
+2. Click on the **Settings** tab at the top of the repository page.
+3. In the left sidebar under the *Code and automation* section, click on **Pages**.
+4. In the **Build and deployment** section, select **Deploy from a branch** under the *Source* dropdown.
+5. In the **Branch** dropdown, select **`main`** and leave the folder as `/ (root)`.
+6. Click **Save**.
+7. Wait 1–2 minutes for GitHub Actions to build the site. Refresh the page, and your public web link will appear at the top of that Settings section (e.g., `https://freekenny.github.io/book-reader/`).
