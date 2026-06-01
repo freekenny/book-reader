@@ -231,6 +231,7 @@
         let pdfDoc = null; let pageNum = 1;
         let book = null; let rendition = null;
         let locationsPerPage = 2.5; // Estimated locations per page
+        let maxLocationsPerSpread = 0; // Max location diff observed for spread calculations
 
         function toggleSidebar() { sidebar.classList.toggle('open'); }
 
@@ -244,6 +245,7 @@
             document.getElementById('page-info').textContent = 'Loading...';
             pageNum = 1; pdfDoc = null; book = null; rendition = null;
             locationsPerPage = 2.5;
+            maxLocationsPerSpread = 0;
 
             if (topPageInfo) {
                 topPageInfo.textContent = 'Loading...';
@@ -278,12 +280,13 @@
                     const startLoc = book.locations.locationFromCfi(location.start.cfi);
                     const endLoc = location.end ? book.locations.locationFromCfi(location.end.cfi) : -1;
                     
-                    // Dynamically calculate locationsPerPage based on what's visible on screen
+                    // Calculate locationsPerPage based on the maximum screen capacity observed (prevents jumping on empty pages/chapter breaks)
                     if (startLoc !== -1 && endLoc !== -1 && endLoc > startLoc) {
                         const diff = endLoc - startLoc;
-                        if (diff >= 1 && diff <= 30) {
+                        if (diff > maxLocationsPerSpread && diff <= 30) {
+                            maxLocationsPerSpread = diff;
                             const isSpread = readerContainer.offsetWidth >= 800;
-                            locationsPerPage = isSpread ? (diff / 2) : diff;
+                            locationsPerPage = isSpread ? (maxLocationsPerSpread / 2) : maxLocationsPerSpread;
                             if (locationsPerPage < 0.5) locationsPerPage = 0.5;
                         }
                     }
@@ -495,7 +498,11 @@
                 } else {
                     alert("EPUB locations are still loading. Please use the Chapters sidebar to navigate or wait a moment.");
                 }
-            }
+        });
+
+        // Reset page scale baseline on window resize to allow adaptation
+        window.addEventListener('resize', () => {
+            maxLocationsPerSpread = 0;
         });
     </script>
 </body>
