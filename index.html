@@ -168,6 +168,81 @@
         }
 
         canvas { max-width: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+
+        .bookmarks-dropdown-wrapper {
+            position: relative;
+        }
+
+        .bookmarks-dropdown {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: calc(100% + 10px);
+            width: 320px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            z-index: 120;
+            color: #333;
+            max-height: 380px;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .bookmarks-dropdown.open {
+            display: block;
+        }
+
+        .bookmarks-dropdown h3 {
+            font-size: 1.05rem;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+            color: #333;
+            text-align: left;
+        }
+
+        .bookmark-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            border-radius: 4px;
+        }
+
+        .bookmark-item:hover {
+            background-color: #f5f9ff;
+        }
+
+        .bookmark-text {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--primary);
+            font-weight: 500;
+            text-align: left;
+        }
+
+        .delete-bookmark-btn {
+            background: none;
+            border: none;
+            color: #ccc;
+            cursor: pointer;
+            font-size: 1.2rem;
+            line-height: 1;
+            padding: 2px 6px;
+            transition: color 0.2s;
+        }
+
+        .delete-bookmark-btn:hover {
+            color: #ff4d4d;
+        }
     </style>
 </head>
 <body>
@@ -177,6 +252,15 @@
         <div id="top-page-info" class="top-page-info"></div>
         <div class="header-controls">
             <button class="btn" onclick="toggleSidebar()">☰ Chapters</button>
+            <div class="bookmarks-dropdown-wrapper">
+                <button class="btn" onclick="toggleBookmarks()">🔖 Bookmarks</button>
+                <div id="bookmarks-dropdown" class="bookmarks-dropdown">
+                    <h3>Bookmarks</h3>
+                    <div id="bookmarks-list">
+                        <p style="color: #888; font-size: 0.85rem; padding: 10px; text-align: center;">No bookmarks for this book. Press 'M' to add one.</p>
+                    </div>
+                </div>
+            </div>
             <div class="upload-btn-wrapper">
                 <button class="btn">Upload Book</button>
                 <input type="file" id="file-upload" accept=".pdf, .epub" />
@@ -232,6 +316,7 @@
         let book = null; let rendition = null;
         let locationsPerPage = 2.5; // Estimated locations per page
         let maxLocationsPerSpread = 0; // Max location diff observed for spread calculations
+        let currentFileName = "";
 
         function toggleSidebar() { sidebar.classList.toggle('open'); }
 
@@ -239,6 +324,7 @@
             const file = e.target.files[0];
             if (!file) return;
 
+            currentFileName = file.name;
             readerContainer.innerHTML = '';
             tocContent.innerHTML = '<p style="color: #888;">Loading contents...</p>';
             controls.style.display = 'flex';
@@ -246,6 +332,7 @@
             pageNum = 1; pdfDoc = null; book = null; rendition = null;
             locationsPerPage = 2.5;
             maxLocationsPerSpread = 0;
+            updateBookmarksUI();
 
             if (topPageInfo) {
                 topPageInfo.textContent = 'Loading...';
@@ -498,6 +585,183 @@
                 } else {
                     alert("EPUB locations are still loading. Please use the Chapters sidebar to navigate or wait a moment.");
                 }
+            }
+        });
+
+        // --- BOOKMARKS & SHORTCUTS LOGIC ---
+        let bookmarks = {};
+        try {
+            const stored = localStorage.getItem('webbookreader_bookmarks');
+            if (stored) {
+                bookmarks = JSON.parse(stored);
+            }
+        } catch (e) {
+            console.error("Failed to load bookmarks:", e);
+        }
+
+        function toggleBookmarks(force) {
+            const dropdown = document.getElementById('bookmarks-dropdown');
+            if (!dropdown) return;
+            if (typeof force === 'boolean') {
+                if (force) dropdown.classList.add('open');
+                else dropdown.classList.remove('open');
+            } else {
+                dropdown.classList.toggle('open');
+            }
+        }
+
+        document.addEventListener('click', (e) => {
+            const wrapper = document.querySelector('.bookmarks-dropdown-wrapper');
+            if (wrapper && !wrapper.contains(e.target)) {
+                toggleBookmarks(false);
+            }
+        });
+
+        function showToast(message) {
+            const existing = document.getElementById('toast-notification');
+            if (existing) {
+                existing.remove();
+            }
+
+            const toast = document.createElement('div');
+            toast.id = 'toast-notification';
+            toast.style.position = 'fixed';
+            toast.style.bottom = '20px';
+            toast.style.left = '50%';
+            toast.style.transform = 'translateX(-50%)';
+            toast.style.background = 'rgba(51, 51, 51, 0.9)';
+            toast.style.color = 'white';
+            toast.style.padding = '10px 20px';
+            toast.style.borderRadius = '20px';
+            toast.style.fontSize = '0.9rem';
+            toast.style.fontWeight = 'bold';
+            toast.style.zIndex = '1000';
+            toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s ease';
+            toast.textContent = message;
+
+            document.body.appendChild(toast);
+            
+            setTimeout(() => { toast.style.opacity = '1'; }, 50);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => { toast.remove(); }, 300);
+            }, 2500);
+        }
+
+        function updateBookmarksUI() {
+            const listContainer = document.getElementById('bookmarks-list');
+            if (!listContainer) return;
+
+            if (!currentFileName || !bookmarks[currentFileName] || bookmarks[currentFileName].length === 0) {
+                listContainer.innerHTML = `<p style="color: #888; font-size: 0.85rem; padding: 10px; text-align: center;">No bookmarks for this book. Press 'M' to add one.</p>`;
+                return;
+            }
+
+            listContainer.innerHTML = '';
+            bookmarks[currentFileName].forEach((b, idx) => {
+                const item = document.createElement('div');
+                item.className = 'bookmark-item';
+                
+                const textSpan = document.createElement('span');
+                textSpan.className = 'bookmark-text';
+                textSpan.textContent = b.label;
+                textSpan.onclick = () => {
+                    if (pdfDoc) {
+                        pageNum = b.pageNum;
+                        renderPDFPage(pageNum);
+                    } else if (rendition) {
+                        rendition.display(b.cfi);
+                    }
+                    toggleBookmarks(false);
+                };
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-bookmark-btn';
+                deleteBtn.innerHTML = '&times;';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    deleteBookmark(idx);
+                };
+
+                item.appendChild(textSpan);
+                item.appendChild(deleteBtn);
+                listContainer.appendChild(item);
+            });
+        }
+
+        function deleteBookmark(idx) {
+            if (currentFileName && bookmarks[currentFileName]) {
+                const removed = bookmarks[currentFileName].splice(idx, 1);
+                localStorage.setItem('webbookreader_bookmarks', JSON.stringify(bookmarks));
+                updateBookmarksUI();
+                if (removed.length > 0) {
+                    showToast(`Removed Bookmark: ${removed[0].label}`);
+                }
+            }
+        }
+
+        function addBookmark() {
+            if (!currentFileName) {
+                showToast("Please upload a book first to add bookmarks.");
+                return;
+            }
+
+            if (!bookmarks[currentFileName]) {
+                bookmarks[currentFileName] = [];
+            }
+
+            let newBookmark = null;
+            if (pdfDoc) {
+                const label = `Page ${pageNum}`;
+                if (bookmarks[currentFileName].some(b => b.pageNum === pageNum)) {
+                    showToast("Page already bookmarked");
+                    return;
+                }
+                newBookmark = { pageNum: pageNum, label: label };
+            } else if (book && rendition) {
+                const location = rendition.currentLocation();
+                if (location && location.start) {
+                    const cfi = location.start.cfi;
+                    const pageText = document.getElementById('page-info').textContent;
+                    const label = pageText !== "EPUB Reader" ? pageText : `Location ${location.start.index + 1}`;
+                    
+                    if (bookmarks[currentFileName].some(b => b.cfi === cfi)) {
+                        showToast("Location already bookmarked");
+                        return;
+                    }
+                    newBookmark = { cfi: cfi, label: label };
+                }
+            }
+
+            if (newBookmark) {
+                bookmarks[currentFileName].push(newBookmark);
+                if (pdfDoc) {
+                    bookmarks[currentFileName].sort((a, b) => a.pageNum - b.pageNum);
+                }
+                localStorage.setItem('webbookreader_bookmarks', JSON.stringify(bookmarks));
+                updateBookmarksUI();
+                showToast(`Added Bookmark: ${newBookmark.label}`);
+            }
+        }
+
+        // --- KEYBOARD SHORTCUTS ---
+        document.addEventListener('keydown', (e) => {
+            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
+                return;
+            }
+
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                document.getElementById('prev-btn').click();
+            } else if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                document.getElementById('next-btn').click();
+            } else if (e.key.toLowerCase() === 'm') {
+                e.preventDefault();
+                addBookmark();
             }
         });
 
